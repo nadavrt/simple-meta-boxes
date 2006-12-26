@@ -73,21 +73,21 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 				$currentPageTemplate = get_post_meta( $post->ID, '_wp_page_template', true );
 				foreach ($this->metaboxes as $metaboxName => $metaboxArgs) 
 				{
-					if ( !isset($metaboxArgs['page_template']) )
+					if ( !isset($metaboxArgs['page_templates']) )
 					{
 						unset($this->metaboxes[$metaboxName]);
 						continue;
 					}
 
-					if ( !is_array($metaboxArgs['page_template']) )	
+					if ( !is_array($metaboxArgs['page_templates']) )	
 					{
-						$arrayContent = $metaboxArgs['page_template'];
-						$metaboxArgs['page_template'] = array( $arrayContent ); 
+						$arrayContent = $metaboxArgs['page_templates'];
+						$metaboxArgs['page_templates'] = array( $arrayContent ); 
 					}
 
-					if ( isset($metaboxArgs['page_template']) )
+					if ( isset($metaboxArgs['page_templates']) )
 					{
-						if ( ( !in_array('page', $metaboxArgs['page_template']) ) && ( !in_array($currentPageTemplate, $metaboxArgs['page_template']) ) ) 
+						if ( ( !in_array('page', $metaboxArgs['page_templates']) ) && ( !in_array($currentPageTemplate, $metaboxArgs['page_templates']) ) ) 
 						{
 							unset($this->metaboxes[$metaboxName]);
 							continue;
@@ -288,6 +288,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		if ( $metaData === FALSE ) $metaData = get_post_meta($post->ID, $field['id'], TRUE);
 		if ( !$repeatGroup && is_array($metaData) && isset($metaData[0]) ) $metaData = $metaData[0]; // This happens when a field that was a repeater is then reset to a regular field.
 		if ( ($metaData == '') && isset($field['default']) ) $metaData = $field['default'];
+		$metaData = esc_html($metaData);
 		if ( !isset($field['title']) ) $field['title'] = '';
 		if ( !isset($field['class']) ) $field['class'] = array('');
 		$field['description'] = (isset($field['description']))? $field['description']:'';
