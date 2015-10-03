@@ -3,7 +3,7 @@
   Software Name: Simple Meta Boxes
   Plugin URI: http://github.com/nadavrt/simple-meta-boxes/
   Description: A simple PHP class for creating Wordpress meta boxes and custom fields.
-  Version: 1
+  Version: 1.0.1
   Author: Nadav Rotchild
   Author URI: http://www.nadavr.com
   License: MIT license
@@ -38,7 +38,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		$this->classUrl = $this->get_class_url();
 
 		//Create metaboxes and metabox functionality
-		$this->add_form_metaboxes();
+		$this->add_metaboxes();
 
 		//Add class styles and scripts
 		$this->register_styles_and_scripts();
@@ -217,14 +217,14 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 
 
 	/**
-	*	Create meta boxes for the contact form post type.
+	*	Create meta boxes.
 	* 	@param NULL
 	*	@return NULL
 	**/
-	public function add_form_metaboxes()
+	public function add_metaboxes()
 	{
 		foreach ($this->metaboxes as $metabox) {
-			//echo '<pre>';var_dump($metabox);die;
+			if ( !isset( $metabox['title']) || ($metabox['title'] == '' ) ) $metabox['title'] = ' ';
 			add_meta_box( $metabox['id'] , $metabox['title'], array($this,'render_metabox_view'), $metabox['post_type'], 'advanced', 'high', array('metabox' => $metabox) );
 		}	
 	}
@@ -288,7 +288,14 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		if ( $metaData === FALSE ) $metaData = get_post_meta($post->ID, $field['id'], TRUE);
 		if ( !$repeatGroup && is_array($metaData) && isset($metaData[0]) ) $metaData = $metaData[0]; // This happens when a field that was a repeater is then reset to a regular field.
 		if ( ($metaData == '') && isset($field['default']) ) $metaData = $field['default'];
-		$metaData = esc_html($metaData);
+		if ( is_array($metaData) )
+	    {
+           foreach ($metaData as $key => $value) {
+                $metaData[$key] = esc_html($value);
+           }
+	    }
+        else $metaData = esc_html($metaData);
+		
 		if ( !isset($field['title']) ) $field['title'] = '';
 		if ( !isset($field['class']) ) $field['class'] = array('');
 		$field['description'] = (isset($field['description']))? $field['description']:'';
@@ -482,8 +489,6 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 			}
 
 			echo '<button class="smb_field_up">∧</button><button class="smb_field_down">∨</button><button class="smb_field_deleter">-</button>';
-			//if ( $cloneDataNumber == 0 ) 
-
 			echo '<p class="smb_description">' . $field['description'] . '</p>';
 
 			if ( $field['type'] == 'file' && $metaData && ($metaData !== '') ) $this->add_file_image($metaData);

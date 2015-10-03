@@ -183,5 +183,5 @@
 		)
 	);
 
-	$cmb = new Simple_Meta_Boxes($metaboxes);
+	$smb = new Simple_Meta_Boxes($metaboxes);
 ?>
