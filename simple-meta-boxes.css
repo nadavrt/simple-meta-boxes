@@ -112,7 +112,7 @@
 	display: none;
 }
 
-.smb_thumbnail{
+.smb_thumbnail, .smb_media_thumbnail{
 	min-width: 50px;
 	min-height: 28px;
 	max-width: 300px;
@@ -123,12 +123,12 @@
 	box-shadow:         3px 3px 5px 0px rgba(50, 50, 50, 0.75);
 }
 
-.smb_thumb_container{
+.smb_thumb_container, .smb_media_container{
 	position: relative;	
 	display: table-cell;
 }
 
-.smb_thumb_container > span{
+.smb_thumb_container > span, .smb_media_container > span{
 	color: #fff;
 	font-size: 13px;
 	font-weight: bold;
@@ -140,7 +140,7 @@
 	z-index: 2;
 }
 
-.smb_thumb_container:after {
+.smb_thumb_container:after, .smb_media_container:after{
   content: "";
   position: absolute;
   top: -13px;
@@ -154,6 +154,8 @@
   -webkit-transform: rotate(-45deg); /* Chrome, Safari, Opera */
   transform: rotate(-45deg);
 }
+
+.smb_media_url{ display: none; }
 
 /* Seamless demake */
 

@@ -3,7 +3,7 @@
   Software Name: Simple Meta Boxes
   Plugin URI: http://github.com/nadavrt/simple-meta-boxes/
   Description: A simple PHP class for creating Wordpress meta boxes and custom fields.
-  Version: 1.0.1
+  Version: 1.1
   Author: Nadav Rotchild
   Author URI: http://www.nadavr.com
   License: MIT license
@@ -239,6 +239,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 	{
 		$metabox = $args['args']['metabox'];
 		$seamless = (isset($metabox['seamless']))? TRUE:FALSE;
+		$repeaterGroup = (isset($metabox['repeater_group']))? TRUE:FALSE;
 		
 		// Add an nonce field so we can check for it later.
 		wp_nonce_field( $metabox['id'], $metabox['id'] . '_nonce' );
@@ -249,10 +250,12 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 			return;
 		}
 
-		echo '<table class="smb_metabox">';
+		if ( $repeaterGroup ) echo '<table class="smb_metabox smb_repeat_group" data-group-name="' . $metabox['id'] . '">';
+		else echo '<table class="smb_metabox">';
+
 		if ( isset($metabox['description']) ) echo '<tr><th class="smb_metabox_description" colspan="2">' . $metabox['description'] . '</th></tr>';
 		
-		if ( isset($metabox['repeater_group']) ) $this->render_repeater_group($post, $metabox);
+		if ( $repeaterGroup ) $this->render_repeater_group($post, $metabox);
 		else
 		{
 			foreach ($metabox['fields'] as $field) 
@@ -337,6 +340,13 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 				if ( $metaData && ($metaData !== '') ) $this->add_file_image($metaData);
 				break;
 
+			case 'media':
+				echo '<td>';
+				echo '<input type="text" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . ' widefat smb_media_url" name="' . $field['name'] . $repeatGroup . '" value="' . $metaData . '" />';
+		        echo '<a href="#" class="button smb_media_upload">Choose Image</a>';
+				$this->add_media_image($metaData);
+				break;
+
 			case 'radio':
 				if ( isset($field['choices']) && is_array($field['choices']) )
 				{
@@ -377,7 +387,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 						else $args = array();
 						
 						echo '<td>';
-						wp_editor( $metaData, $field['id'], $args );
+						wp_editor( html_entity_decode(stripcslashes($metaData)), $field['id'], $args );
 					}
 					else echo '<td><textarea id="' . $field['id'] . $repeatGroup . '" name="' . $field['name'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" cols="60" rows="10" >' . $metaData . '</textarea>';
 					break;
@@ -453,6 +463,12 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 					echo '<input type="' . $field['type'] . '" id="' . $fieldId . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . '" value="" />';
 					break;
 
+				case 'media':
+					echo '<td>';
+					echo '<input type="text" id="' . $fieldId . '" class="' . trim(implode(' ', $field['class'])) . ' widefat smb_media_url" name="' . $field['name'] . '" value="' . $metaData . '" />';
+			        echo '<a href="#" class="button smb_media_upload">Choose Image</a>';
+					break;
+
 				case 'radio':
 					if ( isset($field['choices']) && is_array($field['choices']) )
 					{
@@ -492,6 +508,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 			echo '<p class="smb_description">' . $field['description'] . '</p>';
 
 			if ( $field['type'] == 'file' && $metaData && ($metaData !== '') ) $this->add_file_image($metaData);
+			if ( $field['type'] == 'media' ) $this->add_media_image($metaData);
 			if ( isset($field['required']) ) echo '<p class="smb_required_message">'. $field['required'] . '</p>';
 			echo '</td></tr>';
 
@@ -547,7 +564,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 				$metaData = isset($metaData[$groupCounter])? $metaData[$groupCounter]:'';
 				if ( $firstItemInThisGroup )
 				{
-					echo '<tr class="smb_repeat_group" data-group-number="' . $groupCounter . '">';
+					echo '<tr class="smb_repeat_group_item" data-group-number="' . $groupCounter . '">';
 					echo '<td colspan="2"><table class="smb_repeater_table">';
 					
 					if ($numbering === TRUE) $groupNumber = ' ' . $numberingPrefix . ($groupCounter+1);
@@ -586,6 +603,25 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		$fileFormat = $fileFormat[count($fileFormat)-1];
 		$imageFormats = array('jpg','jpeg','png','gif');
 		if ( in_array($fileFormat, $imageFormats) ) echo '<div class="smb_thumb_container"><span>x</span><img class="smb_thumbnail" src="' . $file .'"/></div>';
+	}
+
+	/**
+	*	Render a visual representation of a media image if it is a supported image format.
+	*	@param string $file The file's url
+	*	@return NULL
+	**/
+	public function add_media_image($file)
+	{
+		if ( $file && ($file !== '') )
+		{
+			$fileFormat = explode('.', $file);
+			$fileFormat = $fileFormat[count($fileFormat)-1];
+			$imageFormats = array('jpg','jpeg','png','gif');
+			if ( in_array($fileFormat, $imageFormats) ) echo '<div class="smb_media_container"><span>x</span><img class="smb_media_thumbnail" src="' . $file .'"/></div>';
+			return;
+		}
+		
+		echo '<div class="smb_media_container" style="display:none;"><span>x</span><img class="smb_media_thumbnail" src=""/></div>';
 	}
 
 
@@ -631,7 +667,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 	public function save_meta_data( $post_id )
 	{
 		
-		// If this is an autosave or a new post/page being created (not published) our form has not been submitted so we don't want to do anything.
+		// If this is an autosave or a new post/page being created (not published) our form has not been submitted so we don't need to do anything.
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
 		if ( !isset($_POST['post_type']) ) return;
 		if ( !$this->check_if_metaboxes_exist() ) return;
@@ -656,7 +692,11 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		// Update all the metaboxes' custom fields.
 		foreach ($this->metaboxes as $metabox)
 		{
-			foreach ($metabox['fields'] as $field) 
+			//If this is a repeatable group update the group index.
+			if ( isset($metabox['repeater_group']) && isset($_POST[$metabox['id']]) ) update_post_meta( $post_id, $metabox['id'] , $_POST[$metabox['id']] );
+
+			//Then update all the other fields according to their type.
+			foreach ($metabox['fields'] as $field)
 			{
 				if ( isset($_POST[$field['id']]) || isset($_FILES[$field['id']]) )
 				{

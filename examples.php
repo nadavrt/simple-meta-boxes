@@ -69,6 +69,11 @@
 			array(
 				'title' => 'Movie Poster',
 				'id' => 'movie_poster',
+				'type' => 'media',
+			),
+			array(
+				'title' => 'Movie Clip',
+				'id' => 'movie_clip',
 				'type' => 'file',
 			),
 			array(

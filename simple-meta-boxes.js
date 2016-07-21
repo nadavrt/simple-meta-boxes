@@ -6,6 +6,7 @@
 		var metaBox = $('#' + smb.seamlessMetaBoxes[i]);
 		$(metaBox).addClass('smb_seamless');
 		$('> h3', metaBox).removeClass('hndle');
+		$('> h2', metaBox).removeClass('hndle ui-sortable-handle');
 	}
 
 	//Hide titles from boxes with the show_title set to FALSE
@@ -180,10 +181,6 @@
 		}
 
 	};
-
-	 $('#publish').click(function(){ 
-	 	return SMBFieldValidator.init();
-	 });
 
 
 	 /*##############################*/
@@ -466,7 +463,7 @@
 	//Add deleter (deletion) functionality to all the repeater groups.
 	$('body').on('click', '.smb_group_deleter', function(e){
 		e.preventDefault();
-		var elementToDelete = $(this).closest('tr.smb_repeat_group');
+		var elementToDelete = $(this).closest('tr.smb_repeat_group_item');
 		if ( $('.smb_group_title', elementToDelete).hasClass('smb_first_group') )
 		{
 			var newFirstElement = $(elementToDelete).next();
@@ -483,8 +480,8 @@
 	//Add down button functionality to all the repeater groups.
 	$('body').on('click', '.smb_group_down', function(e){
 		e.preventDefault();
-		var elementToMoveDown = $(this).closest('tr.smb_repeat_group');
-		var elementToMoveUp = $(this).closest('tr.smb_repeat_group').next();
+		var elementToMoveDown = $(this).closest('tr.smb_repeat_group_item');
+		var elementToMoveUp = $(this).closest('tr.smb_repeat_group_item').next();
 		var upperElementPosition = $(elementToMoveDown).attr('data-group-number');
 
 		//interchange the elements positions
@@ -507,8 +504,8 @@
 	//Add up button functionality to all the repeater groups.
 	$('body').on('click', '.smb_group_up', function(e){
 		e.preventDefault();
-		var elementToMoveUp = $(this).closest('tr.smb_repeat_group');
-		var elementToMoveDown = $(this).closest('tr.smb_repeat_group').prev();
+		var elementToMoveUp = $(this).closest('tr.smb_repeat_group_item');
+		var elementToMoveDown = $(this).closest('tr.smb_repeat_group_item').prev();
 		var upperElementPosition = $(elementToMoveDown).attr('data-group-number');
 
 		//interchange the elements positions
@@ -526,6 +523,70 @@
 		}
 		$(elementToMoveDown).insertAfter(elementToMoveUp);
 		
+	});
+
+
+	 /*####################################*/
+	 /*######  Media Uploader Fields ######*/
+	 /*####################################*/
+	 
+	 //Add upload button functionality for media fields.
+	 $('body').on('click','.smb_media_upload', function(e) {
+        mediaImg = $(this).parent('td').find('img');
+        mediaUrl = $(this).parent('td').find('.smb_media_url');
+        mediaContainer = $(this).parent('td').find('.smb_media_container');
+
+        e.preventDefault();
+        var custom_uploader = wp.media({
+            title: 'Select Image',
+            button: {
+                text: 'Use This Image',
+            },
+            library: {
+                type: 'image'
+            },
+            multiple: false,
+        })
+        .on('select', function() {
+            var attachment = custom_uploader.state().get('selection').first().toJSON();
+            $(mediaImg).attr('src', attachment.url);
+            $(mediaUrl).val(attachment.url);
+            $(mediaContainer).css('display','table-cell');
+        })
+        .open();
+    });
+
+	// Add image deleting button functionality to all media fields.
+	$('body').on('click', '.smb_media_container > span', function(e){
+		e.preventDefault();
+		var imageField = $(this).closest('.smb_field');
+		$('.smb_media_container', imageField).css('display','none');
+		$('input', imageField).attr('value','');
+	});
+
+	 /*####################################*/
+	 /*######  Actions on Page Save ######*/
+	 /*####################################*/
+
+	$('#publish').click(function(){
+		//Add index counters to groups.
+		$('.smb_repeat_group').each(function(){
+			var group = this;
+			var groupItems = 0;
+			var groupName = $(this).data('group-name')
+			var groupIndexId = groupName + '_index';
+			$('tr', group).each(function(){
+				if ( $(this).hasClass('smb_repeat_group_item') ) groupItems++;
+			});
+
+			if ( $('#'+groupIndexId).length == 1 ) $('#'+groupIndexId).val(groupItems);
+			else $(group).before('<input type="hidden" id="' + groupIndexId + '" class="groupIndexId" name="' + groupName + '" value="' + groupItems + '">');
+
+			console.log(groupItems);
+		});
+
+		//Validate the SMB fields
+	 	return SMBFieldValidator.init();
 	});
 
 })( jQuery );
