@@ -3,7 +3,7 @@
   Software Name: Simple Meta Boxes
   Plugin URI: http://github.com/nadavrt/simple-meta-boxes/
   Description: A simple PHP class for creating Wordpress meta boxes and custom fields.
-  Version: 1.1
+  Version: 1.2
   Author: Nadav Rotchild
   Author URI: http://www.nadavr.com
   License: MIT license
@@ -232,14 +232,14 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 
 	/**
 	* 	@param object $post The WP_Post object for the current post/page.
-	*	@param array $args Contain the curernt metabox data, among other things.
+	*	@param array $args Contains the curernt metabox data, among other things.
 	*	@return NULL
 	**/
 	public function render_metabox_view($post, $args)
 	{
 		$metabox = $args['args']['metabox'];
-		$seamless = (isset($metabox['seamless']))? TRUE:FALSE;
-		$repeaterGroup = (isset($metabox['repeater_group']))? TRUE:FALSE;
+		$seamless = isset($metabox['seamless']);
+		$repeaterGroup = isset($metabox['repeater_group']);
 		
 		// Add an nonce field so we can check for it later.
 		wp_nonce_field( $metabox['id'], $metabox['id'] . '_nonce' );
@@ -250,7 +250,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 			return;
 		}
 
-		if ( $repeaterGroup ) echo '<table class="smb_metabox smb_repeat_group" data-group-name="' . $metabox['id'] . '">';
+		if ( $repeaterGroup ) echo '<table class="smb_metabox smb_repeat_group">';
 		else echo '<table class="smb_metabox">';
 
 		if ( isset($metabox['description']) ) echo '<tr><th class="smb_metabox_description" colspan="2">' . $metabox['description'] . '</th></tr>';
@@ -270,22 +270,23 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 
 
 	/**
-	*	Render the HTML content of custom meta fields within a metabox.
+	*	Render the HTML content of custom meta fields within a metabox. The $metaData, $repeatGroup, $groupId and $groupCounter parameters are
+	*	only required for repeatable groups, which is why they are marked as optional.
 	*	@param object $post The global post variable.
 	*	@param array $field The field to render.
 	*	@param array $metaData Metadata that was already fetched by the render_repeater_group method. Used when calling this function from a repeater group (optional).
-	*	@param boolean $repeatGroup Used when generating repeater group fields (optional).
-	*	@param int $groupCounter The number of the current field group. (Optional).
+	*	@param boolean $repeatGroup Used when calling this function from a repeater group (optional).
+	*	@param string $groupId The id of the current field group. Used when calling this function from a repeater group (optional).
+	*	@param int $groupCounter The number of the current field group. Used when calling this function from a repeater group (optional).
 	*	@return NULL
 	**/
-	public function render_field($post, $field, $seamless = FALSE, $metaData = FALSE, $repeatGroup = FALSE, $groupCounter = FALSE)
-	{
+	public function render_field($post, $field, $seamless = FALSE, $metaData = FALSE, $repeatGroup = FALSE, $groupId = FALSE, $groupCounter = FALSE)
+	{      //$this->render_field($post, $field, FALSE, $metaData, TRUE, $metabox['id'], $groupCounter);
 		if ( $repeatGroup )
 		{
-			$repeatGroup = '['. $groupCounter .']';
+			$fieldName = $groupId . '['. $groupCounter .']' . '[' . $field['id'] . ']';
 			if ( !$metaData ) $metaData = '';
 		}
-		else $repeatGroup = '';
 
 		//If this is not an empty group try fetching the custom field,
 		if ( $metaData === FALSE ) $metaData = get_post_meta($post->ID, $field['id'], TRUE);
@@ -303,16 +304,18 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		if ( !isset($field['class']) ) $field['class'] = array('');
 		$field['description'] = (isset($field['description']))? $field['description']:'';
 
-		$field['name'] = $field['id'];
-		if ( isset($field['required']) ) echo '<tr class="' . $field['id'] . ' smb_field smb_required_' . $field['type'] . '"><th style="width:18%"><label for="'. $field['name'] . $repeatGroup .'">' . $field['title'] . '<span class="smb_required_mark">*</span></label></th>';
-		else echo '<tr class="' . $field['id'] . ' smb_field"><th style="width:18%"><label for="'. $field['name'] . $repeatGroup .'">' . $field['title'] . '</label></th>';
+		//Create the table row for this field.
+		if ( !$repeatGroup ) $fieldName = $field['id'];
+		if ( isset($field['required']) ) echo '<tr class="smb_field smb_required_' . $field['type'] . '"><th style="width:18%"><label for="'. $fieldName .'">' . $field['title'] . '<span class="smb_required_mark">*</span></label></th>';
+		else echo '<tr class="smb_field"><th style="width:18%"><label for="'. $fieldName .'">' . $field['title'] . '</label></th>';
 
+		//Generate the field's table data depending on its type.
 		if ( !isset($field['type']) ) $field['type'] = 'text';
 		switch ($field['type'])
 		{
 			case 'colorpicker':
 				$field['class'][] = 'smb_color_picker';
-				echo '<td><input type="' . $field['type'] . '" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '" value="' . $metaData . '" />';
+				echo '<td><input type="' . $field['type'] . '" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '" value="' . $metaData . '" />';
 				break;
 
 			case 'checkbox':
@@ -323,26 +326,26 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 					foreach ($field['choices'] as $choiceName => $choiceValue) 
 					{
 						$isChecked = (is_array($metaData) && in_array($choiceName, $metaData))? 'checked':'';
-						echo '<input type="checkbox" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '[' . $choiceName . ']" value="' . $choiceName . '" ' . $isChecked . '/><span class="smb_checkbox_title">' . $choiceValue . '</span>';
+						echo '<input type="checkbox" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '[' . $choiceName . ']" value="' . $choiceName . '" ' . $isChecked . '/><span class="smb_checkbox_title">' . $choiceValue . '</span>';
 					}
-					echo '<input type="checkbox" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '[existanceFlag]" value="1" checked="checked" data-flag="true" style="display:none;" />';
+					echo '<input type="checkbox" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '[existanceFlag]" value="1" checked="checked" data-flag="true" style="display:none;" />';
 				}
 				break;
 
 			case 'email':
-				echo '<td><input type="' . $field['type'] . '" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '" value="' . $metaData . '" size="25" />';
+				echo '<td><input type="' . $field['type'] . '" id="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '" value="' . $metaData . '" size="25" />';
 				break;
 
 			case 'file':
 				echo '<td>';
-				echo '<input type="text" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . ' smb_file_input" name="' . $field['name'] . $repeatGroup . '" value="' . $metaData . '" size="25" />';
-				echo '<input type="' . $field['type'] . '" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '" value="" />';
+				echo '<input type="text" id="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . ' smb_file_input" name="' . $fieldName . '" value="' . $metaData . '" size="25" />';
+				echo '<input type="' . $field['type'] . '" id="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '" value="" />';
 				if ( $metaData && ($metaData !== '') ) $this->add_file_image($metaData);
 				break;
 
 			case 'media':
 				echo '<td>';
-				echo '<input type="text" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . ' widefat smb_media_url" name="' . $field['name'] . $repeatGroup . '" value="' . $metaData . '" />';
+				echo '<input type="text" id="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . ' widefat smb_media_url" name="' . $fieldName . '" value="' . $metaData . '" />';
 		        echo '<a href="#" class="button smb_media_upload">Choose Image</a>';
 				$this->add_media_image($metaData);
 				break;
@@ -356,7 +359,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 						if ( !$metaData ) $metaData = $choiceName; //If no default was defined and no value exists default to the first radio button.
 						
 						$isChecked = ($metaData == $choiceName)? 'checked="checked"':'';
-						echo '<input type="radio" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['id'] . $repeatGroup . '" value="' . $choiceName . '" ' . $isChecked . '/><span class="smb_checkbox_title">' . $choiceValue . '</span>';
+						echo '<input type="radio" id="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '" value="' . $choiceName . '" ' . $isChecked . '/><span class="smb_checkbox_title">' . $choiceValue . '</span>';
 					}
 				}
 				break;
@@ -365,7 +368,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 				echo '<td>';
 				if ( isset($field['choices']) && is_array($field['choices']) )
 				{
-					echo '<select id="'. $field['id'] . $repeatGroup .'" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '">';
+					echo '<select id="'. $fieldName .'" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '">';
 					foreach ($field['choices'] as $selectName => $selectValue) 
 					{
 						$isSelected = ($metaData==$selectName)? 'selected':'';
@@ -377,7 +380,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 
 
 			case 'textarea':
-				echo '<td><textarea id="' . $field['id'] . $repeatGroup . '" name="' . $field['name'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" cols="60" rows="10" >' . $metaData . '</textarea>';
+				echo '<td><textarea id="' . $fieldName . '" name="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . '" cols="60" rows="10" >' . $metaData . '</textarea>';
 				break;
 
 			case 'wysiwyg':
@@ -389,11 +392,11 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 						echo '<td>';
 						wp_editor( html_entity_decode(stripcslashes($metaData)), $field['id'], $args );
 					}
-					else echo '<td><textarea id="' . $field['id'] . $repeatGroup . '" name="' . $field['name'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" cols="60" rows="10" >' . $metaData . '</textarea>';
+					else echo '<td><textarea id="' . $fieldName . '" name="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . '" cols="60" rows="10" >' . $metaData . '</textarea>';
 					break;
 					
 			default:
-				echo '<td><input type="text" id="' . $field['id'] . $repeatGroup . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $field['name'] . $repeatGroup . '" value="' . $metaData . '" size="25" />';
+				echo '<td><input type="text" id="' . $fieldName . '" class="' . trim(implode(' ', $field['class'])) . '" name="' . $fieldName . '" value="' . $metaData . '" size="25" />';
 		}
 
 		echo '<p class="smb_description">' . $field['description'] . '</p>';
@@ -429,7 +432,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 			if ( $cloneDataNumber == 0 ) $specialClasses.=' smb_first_field';
 			if ( ($cloneDataNumber+1) ==  $repeaterCounter ) $specialClasses.= ' smb_last_field';
 			
-			echo '<tr class="' . $field['id'] . ' smb_field smb_field_repeater_field'. $specialClasses . '" data-field-number="' . $cloneDataNumber . '"><th style="width:18%"><label for="'. $fieldId .'">' . $field['title'] . '</label></th>';
+			echo '<tr class="smb_field smb_field_repeater_field'. $specialClasses . '" data-field-number="' . $cloneDataNumber . '"><th style="width:18%"><label for="'. $fieldId .'">' . $field['title'] . '</label></th>';
 
 			if ( !isset($field['type']) ) $field['type'] = 'text';
 			switch ($field['type'])
@@ -520,7 +523,7 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 
 
 	/**
-	*	Render the HTML content of a fields group.
+	*	Render the HTML content of a fields group. Creates the table structure of each group item and then calls the render_field method to generate each indivisual field.
 	*	@param object $post The current post data. 
 	*	@param array $metabox The metabox arguments,
 	*	@return NULL
@@ -528,40 +531,38 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 	public function render_repeater_group($post, $metabox)
 	{
 		$groupTitle = (isset($metabox['repeater_group']['title']))? $metabox['repeater_group']['title']:'Group';
-		$loop = TRUE;
 		$firstGroup = TRUE;
 		$numbering = (isset($metabox['repeater_group']['numbering']))? $metabox['repeater_group']['numbering']:TRUE;
 		$numberingPrefix = (isset($metabox['repeater_group']['numbering_prefix']))? $metabox['repeater_group']['numbering_prefix']:'';
 		$guiButtons = '<button class="smb_group_up">&wedge;</button><button class="smb_group_down">&vee;</button><button class="smb_group_deleter">&mdash;</button>';
+		$groupMetaData = get_post_meta($post->ID, $metabox['id'], TRUE);
 		
-		//Find how many groups we have in this metabox
-		$longestFieldArray = 1; //At the very least we output one group.
-		foreach ($metabox['fields'] as $field)
+		//If this is an empty group create empty starter fields for this group.
+		if ( empty($groupMetaData) )
 		{
-			$metaDataArray = get_post_meta($post->ID, $field['id'], TRUE);
-
-			if ( is_array($metaDataArray) )
-			{
-				if ( count($metaDataArray) > $longestFieldArray ) $longestFieldArray = count($metaDataArray);
+			foreach ($metabox['fields'] as $field) {
+				$groupMetaData[0][$field['id']] = ''; 
 			}
 		}
 
-		//Loop through all the field in this group and its repeated groups.
-		for ($groupCounter=0; $groupCounter < $longestFieldArray; $groupCounter++)
+		$numberOfGroups = count($groupMetaData);
+		
+		//Loop through all the field in each group.
+		foreach ($groupMetaData as $groupCounter => $groupFields)
 		{
 			$firstItemInThisGroup = TRUE;
 			foreach ($metabox['fields'] as $field) 
 			{
+				
 				if ($field['type'] == 'checkbox') 
 				{
-					$metaData = get_post_meta($post->ID, $field['id'], FALSE);
+					$metaData = $groupFields[$field['id']];
 					
-					//If the checkbox is not empty dig into the multi-dimentional array and fetch them
+					//If the checkboxes array is not empty dig into the multi-dimentional array and fetch the checked boxes.
 					if ( is_array($metaData) && (count($metaData) != count($metaData, COUNT_RECURSIVE)) ) $metaData = $metaData[0];
 				}
-				else $metaData = get_post_meta($post->ID, $field['id'], TRUE);
-				
-				$metaData = isset($metaData[$groupCounter])? $metaData[$groupCounter]:'';
+				else $metaData = $groupFields[$field['id']];
+
 				if ( $firstItemInThisGroup )
 				{
 					echo '<tr class="smb_repeat_group_item" data-group-number="' . $groupCounter . '">';
@@ -570,25 +571,26 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 					if ($numbering === TRUE) $groupNumber = ' ' . $numberingPrefix . ($groupCounter+1);
 					else $groupNumber = '';
 
-					//Is this the only item in the group?
-					if ( $firstGroup && ($groupCounter+1) == $longestFieldArray ) echo '<th class="smb_metabox_description smb_group_title smb_first_group smb_last_group" colspan="2"><span>' . $groupTitle . $groupNumber . '</span>' . $guiButtons . '</th>';
+					//Is this the only item (repeatable group) in this group?
+					if ( $firstGroup && (($groupCounter+1) == $numberOfGroups) ) echo '<th class="smb_metabox_description smb_group_title smb_first_group smb_last_group" colspan="2"><span>' . $groupTitle . $groupNumber . '</span>' . $guiButtons . '</th>';
 					else if ($firstGroup)
 					{
 						echo '<th class="smb_metabox_description smb_group_title smb_first_group" colspan="2"><span>' . $groupTitle . $groupNumber . '</span>' . $guiButtons . '</th>';
 						$firstGroup = FALSE;	
 					}
-					else if ( ($groupCounter+1) == $longestFieldArray ) echo '<th class="smb_metabox_description smb_group_title smb_last_group" colspan="2"><span>' . $groupTitle . $groupNumber . '</span>' . $guiButtons . '</th>';
+					else if ( ($groupCounter+1) == $numberOfGroups ) echo '<th class="smb_metabox_description smb_group_title smb_last_group" colspan="2"><span>' . $groupTitle . $groupNumber . '</span>' . $guiButtons . '</th>';
 					else echo '<th class="smb_metabox_description smb_group_title" colspan="2"><span>' . $groupTitle . $groupNumber . '</span>' . $guiButtons . '</th>';
 
 					$firstItemInThisGroup = FALSE;
 				}
-				$this->render_field($post, $field, FALSE, $metaData, TRUE, $groupCounter);
+				$this->render_field($post, $field, FALSE, $metaData, TRUE, $metabox['id'], $groupCounter);
 			}
+
 			echo '</table></td>'; //Close the group's table.
 			echo '</tr>'; //Close the group's table row
 		}
-		
-		echo '<tr><td><button class="smb_group_repeater" data-group-number="' . $groupCounter . '">+</button></td></tr>';
+
+		echo '<tr><td><button class="smb_group_repeater" data-group-number="' . $numberOfGroups . '">+</button></td></tr>';
 	}
 
 
@@ -639,8 +641,9 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		return $rectifiedArray;
 	}
 
+
 	/**
-	*	Make sure a file's format is permitted for uploading and then uploads said file to the wordpress' uploads directory.
+	*	Make sure a file's format is permitted for uploading and then upload said file to the wordpress' uploads directory.
 	*	@param array $file The file data as collected by the $_FILES variable.
 	*	@return string $url The url element of the uploaded file or an empty string if the file could not be uploaded.
 	**/
@@ -651,11 +654,109 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 		$fileFormat = $fileFormat[count($fileFormat)-1];
 		if ( in_array($fileFormat, $this->permittedUploadFormats) || in_array(strtolower($fileFormat), $this->permittedUploadFormats) )
 		{
-			$image_file = wp_upload_bits( $file['name'], null, file_get_contents($file['tmp_name']) );
-	    	if( $image_file['error'] == false) $url = $image_file['url'];	
+			$uploadedFile = wp_upload_bits( $file['name'], null, file_get_contents($file['tmp_name']) );
+	    	if( $uploadedFile['error'] == false) $url = $uploadedFile['url'];	
 		}
     	
     	return $url;
+	}
+
+
+	/**
+	*	Process the meta data submitted by the user and sanitize it if needed.
+	*	@since 1.2
+	*	@param array $field The meta field's information.
+	*	@param mixed $metaData Meta data that was extracted from a group's array. An optional parameter that will only be available if the current meta box is a repeater group.
+	*	@param Array $file The file array to be used for uploading a file. This param only exists if the file was uploaded as part of a repeater group.
+	*	@return mixed $metaData The proccessed meta data.
+	**/
+	public function process_meta_data($field, $metaData = FALSE, $file = FALSE)
+	{
+		if ( !$metaData )
+		{
+			$metaData = $_POST[$field['id']];
+			$multiDimentionalArray = FALSE;
+			if ( is_array($metaData) && (count($metaData) != count($metaData, COUNT_RECURSIVE)) ) $multiDimentionalArray = TRUE;	
+		}
+
+		if ( ($field['type'] == 'checkbox') && is_array($metaData) )
+		{
+			if ( $multiDimentionalArray )
+			{
+				foreach ($metaData as $key => $fieldData) {
+					unset($metaData[$key]['existanceFlag']);
+					if ( empty($metaData[$key]) ) $metaData[$key] = array(FALSE);
+				}
+			}
+			else
+			{
+			 unset($metaData['existanceFlag']);
+			 if ( empty($metaData) ) $metaData = array(FALSE);
+			}
+		}
+
+		if ( $field['type'] == 'file' )
+		{
+			//If this is a group item use local $file variable to upload the file
+			if ($file) $metaData = $this->upload_file($file);
+			else
+			{
+				if( !empty($_FILES) && isset($_FILES[$field['id']]) ) 
+			    {
+			    	//Check if there are multiple files or just one file. Even if there is one file if the field is a repeater we should treat it as an array!
+			    	$fileCount = count( $_FILES[$field['id']]['name'] );
+			        if ( $fileCount > 1 || is_array($_FILES[$field['id']]['name']) )
+			        {
+			        	$files = $_FILES[$field['id']];
+			        	$newMetadata = array();
+			    		//Update existing metadata values
+			    		foreach ($metaData as $key => $value) 
+			    		{
+			    			if ( ($files['name'][$key] != '') && ($files['type'][$key] != '') && ($files['tmp_name'][$key] != '') && ($files['error'][$key] == 0) && ($files['size'][$key] != '') )
+			    			{
+			    				$file = array(
+				        			'name' => $files['name'][$key],
+				        			'type' => $files['type'][$key],
+				        			'tmp_name' => $files['tmp_name'][$key],
+				        			'error' => $files['error'][$key],
+				        			'size' => $files['size'][$key]
+			        			); 		
+			        			$newMetadata[] = $this->upload_file($file);
+			    			}
+			    			else $newMetadata[] = $value;
+			    		}
+			    		$metaData = $newMetadata;
+			    	}
+			    	else
+			    	{
+			    		$file = $_FILES[$field['id']];
+			        	if ( ($file['name'] != '') && ($file['type'] != '') && ($file['tmp_name'] != '') && ($file['error'] == 0) && ($file['size'] != '') )
+			        		$metaData = $this->upload_file($file);
+			    	}
+			    }
+			}
+		}
+
+		//Sanitize the field if needed.
+		if ( isset($field['sanitize']) && is_array($field['sanitize']) && !empty($field['sanitize']) )
+		{
+			foreach ($field['sanitize'] as $sanitizationMethod) 
+			{
+				if ( !in_array($sanitizationMethod, $this->sanitizationMethods) ) continue;
+
+				$methodName = 'sanitize_' . $sanitizationMethod;
+				$metaData = $this->$methodName($metaData);
+			}
+		}
+
+		//Mandatory Sanitize Methods:
+		if ( $field['type'] == 'colorpicker') $metaData = $this->sanitize_color_picker($metaData);
+		if ( $field['type'] == 'email') $metaData = $this->sanitize_email($metaData);
+
+		//Save the meta field's new value.
+		if ( is_array($metaData) && $multiDimentionalArray ) $metaData = $this->rectify_array($metaData);
+		
+		return $metaData;
 	}
 
 
@@ -664,9 +765,8 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 	*	@param string $post_id The post id.
 	*	@return NULL
 	**/
-	public function save_meta_data( $post_id )
+	public function save_meta_data($post_id)
 	{
-		
 		// If this is an autosave or a new post/page being created (not published) our form has not been submitted so we don't need to do anything.
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
 		if ( !isset($_POST['post_type']) ) return;
@@ -689,105 +789,52 @@ Class Simple_Meta_Boxes extends Sanitation_Methods{
 			if ( ( !isset( $_POST[$nonceName]) ) || ( !wp_verify_nonce($_POST[$nonceName], $metabox['id'] ) ) ) return;
 		}
 
-		// Update all the metaboxes' custom fields.
+		// Update all the metaboxes' fields.
 		foreach ($this->metaboxes as $metabox)
 		{
-			//If this is a repeatable group update the group index.
-			if ( isset($metabox['repeater_group']) && isset($_POST[$metabox['id']]) ) update_post_meta( $post_id, $metabox['id'] , $_POST[$metabox['id']] );
-
-			//Then update all the other fields according to their type.
-			foreach ($metabox['fields'] as $field)
+			if ( isset($metabox['repeater_group']) )
 			{
-				if ( isset($_POST[$field['id']]) || isset($_FILES[$field['id']]) )
+				if ( !isset($_POST[$metabox['id']]) || !is_array($_POST[$metabox['id']]) || empty($_POST[$metabox['id']]) ) continue;
+				$groups = $_POST[$metabox['id']];
+				$newGroupsData = array();
+				$groupFields = array();
+
+				//Get the group's available fields.
+				foreach ($metabox['fields'] as $field) {
+					$groupFields[$field['id']] = $field;
+				}
+
+				//Loop through all the groups
+				foreach ($groups as $groupCounter => $group) 
 				{
-					//If this is not a file get the data from $_POST.
-					if ( isset($_POST[$field['id']]) )
+					//process and check each meta field within this group
+					foreach ($group as $fieldId => $metaData) 
 					{
-						$metaData = $_POST[$field['id']];
-						$multiDimentionalArray = FALSE;
-						if ( is_array($metaData) && (count($metaData) != count($metaData, COUNT_RECURSIVE)) ) $multiDimentionalArray = TRUE;	
-					}
-
-					if ( ($field['type'] == 'checkbox') && (is_array($metaData)) )
-					{
-						if ( $multiDimentionalArray )
+						if ( !isset($groupFields[$fieldId]) ) continue; //If a field was injected to the DOM but does not exist in the metabox PHP array ignore it.
+						
+						if ( ($groupFields[$fieldId]['type'] == 'file') && !empty($_FILES) && isset($_FILES[$metabox['id']]['name'][$groupCounter][$fieldId]) && !empty($_FILES[$metabox['id']]['name'][$groupCounter][$fieldId]) )
 						{
-							foreach ($metaData as $key => $fieldData) {
-								unset($metaData[$key]['existanceFlag']);
-								if ( empty($metaData[$key]) ) $metaData[$key] = array(FALSE);
-							}
+							$file = array(
+								'name' => $_FILES[$metabox['id']]['name'][$groupCounter][$fieldId],
+								'tmp_name' => $_FILES[$metabox['id']]['tmp_name'][$groupCounter][$fieldId]
+							);
+							$newGroupsData[$groupCounter][$fieldId] = $this->process_meta_data($groupFields[$fieldId], $metaData, $file);	
 						}
-						else
-						{
-						 unset($metaData['existanceFlag']);
-						 if ( empty($metaData) ) $metaData = array(FALSE);
-						}
+						else $newGroupsData[$groupCounter][$fieldId] = $this->process_meta_data($groupFields[$fieldId], $metaData);
 					}
-
-					if ( $field['type'] == 'file' )
-					{
-						//Get all the meta fields for this file group.
-						$metaData = $_POST[$field['id']];
-
-						//If new files were uploaded handle them.	
-					    if( !empty($_FILES) && isset($_FILES[$field['id']]) ) 
-					    {
-					    	//Check if there are multiple files or just one file. Even if there is one file if the field is a repeater we should treat it as an array!
-					    	$fileCount = count( $_FILES[$field['id']]['name'] );
-					        if ( $fileCount > 1 || is_array($_FILES[$field['id']]['name']) )
-					        {
-					        	$files = $_FILES[$field['id']];
-					        	$newMetadata = array();
-					    		//Update existing metadata values
-					    		foreach ($metaData as $key => $value) 
-					    		{
-					    			if ( ($files['name'][$key] != '') && ($files['type'][$key] != '') && ($files['tmp_name'][$key] != '') && ($files['error'][$key] == 0) && ($files['size'][$key] != '') )
-					    			{
-					    				$file = array(
-						        			'name' => $files['name'][$key],
-						        			'type' => $files['type'][$key],
-						        			'tmp_name' => $files['tmp_name'][$key],
-						        			'error' => $files['error'][$key],
-						        			'size' => $files['size'][$key]
-					        			); 		
-					        			$newMetadata[] = $this->upload_file($file);
-					    			}
-					    			else $newMetadata[] = $value;
-					    		}
-					    		$metaData = $newMetadata;
-					    	}
-					    	else
-					    	{
-					    		$file = $_FILES[$field['id']];
-					        	if ( ($file['name'] != '') && ($file['type'] != '') && ($file['tmp_name'] != '') && ($file['error'] == 0) && ($file['size'] != '') )
-					        		$metaData = $this->upload_file($file);
-					    	}
-					    }
-					}
-
-					//Sanitize the field if needed.
-					if ( isset($field['sanitize']) && is_array($field['sanitize']) && !empty($field['sanitize']) )
-					{
-						foreach ($field['sanitize'] as $sanitizationMethod) 
-						{
-							if ( !in_array($sanitizationMethod, $this->sanitizationMethods) ) continue;
-
-							$methodName = 'sanitize_' . $sanitizationMethod;
-							$metaData = $this->$methodName($metaData);
-						}
-					}
-
-					//Mandatory Sanitize Methods:
-					if ( $field['type'] == 'colorpicker') $metaData = $this->sanitize_color_picker($metaData);
-					if ( $field['type'] == 'email') $metaData = $this->sanitize_email($metaData);
-
-					//Save the meta field's new value.
-					if ( is_array($metaData) && $multiDimentionalArray ) $metaData = $this->rectify_array($metaData);
+				}
+				update_post_meta( $post_id, $metabox['id'] , $this->rectify_array($newGroupsData) );
+			}
+			else
+			{
+				foreach ($metabox['fields'] as $field)
+				{
+					if ( !isset($_POST[$field['id']]) && !isset($_FILES[$field['id']]) ) continue;
+					$metaData = $this->process_meta_data($field);
 					update_post_meta( $post_id, $field['id'] , $metaData );
 				}
 			}
 		}
-	}   
-
+	}
 } //End of Simple_Meta_Boxes Class
 ?>
