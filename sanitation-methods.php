@@ -16,15 +16,7 @@ class Sanitation_Methods{
 
 	public function sanitize_id($data)
 	{
-		if ( is_array($data) )
-		{
-			$sanitizedData = array();
-			foreach ($data as $input){
-				$sanitizedData[] = preg_replace("/[^0-9A-Za-z-_]/", "", $input);
-			}
-			return $sanitizedData;
-		}
-		else return preg_replace("/[^0-9A-Za-z-_]/", "", $data);
+		return (preg_match('/^[a-zA-Z][\w-]*$/', $data))? $data:'';
 	}
 
 	public function sanitize_class($data)
@@ -33,11 +25,16 @@ class Sanitation_Methods{
 		{
 			$sanitizedData = array();
 			foreach ($data as $input){
-				$sanitizedData[] = preg_replace("/[^0-9A-Za-z,-_]/", "", $input);
+				preg_match_all("/\b[a-zA-Z][\w-]*\b/", $input, $matches, PREG_PATTERN_ORDER);
+				$sanitizedData[] = (!empty($matches[0]))? implode(' ', $matches[0]):'';
 			}
 			return $sanitizedData;
 		}
-		else return preg_replace("/[^0-9A-Za-z,-_]/", "", $data); 
+		else
+		{
+			preg_match_all("/\b[a-zA-Z][\w-]*\b/", $data, $matches, PREG_PATTERN_ORDER);
+			return (!empty($matches[0]))? implode(' ', $matches[0]):'';
+		} 	
 	}
 
 	public function sanitize_color_picker($data)
