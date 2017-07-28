@@ -177,7 +177,7 @@
  			var currentMetaBox = $(SMBFieldValidator.emptyRequiredFieldFound).closest('.postbox');
  			if ( $(currentMetaBox).hasClass('closed') ) $(currentMetaBox).removeClass('closed');
  			$('.smb_required_message', SMBFieldValidator.emptyRequiredFieldFound).css('display','block');
- 			$('html, body').animate({ scrollTop: $(SMBFieldValidator.emptyRequiredFieldFound).offset().top-100 }, 1000)
+ 			$('html, body').animate({ scrollTop: $(SMBFieldValidator.emptyRequiredFieldFound).offset().top-100 }, 1000);
 		}
 
 	};
