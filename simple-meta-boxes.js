@@ -177,7 +177,7 @@
  			var currentMetaBox = $(SMBFieldValidator.emptyRequiredFieldFound).closest('.postbox');
  			if ( $(currentMetaBox).hasClass('closed') ) $(currentMetaBox).removeClass('closed');
  			$('.smb_required_message', SMBFieldValidator.emptyRequiredFieldFound).css('display','block');
- 			$('html, body').animate({ scrollTop: $(SMBFieldValidator.emptyRequiredFieldFound).offset().top-100 }, 1000)
+ 			$('html, body').animate({ scrollTop: $(SMBFieldValidator.emptyRequiredFieldFound).offset().top-100 }, 1000);
 		}
 
 	};
@@ -213,7 +213,7 @@
 
 		//Replace the duplicate group number with the clone's real group number in all fields.
 		var groupNumber = $(repeater).attr('data-field-number');
-			$(theClone).attr('data-field-number', groupNumber);
+		$(theClone).attr('data-field-number', groupNumber);
 		var fieldTypesToChange = ['input','textarea','select'];
 		for (i = 0; i < fieldTypesToChange.length; i++) 
 		{
@@ -222,21 +222,8 @@
 				var fieldName = $(currentField).attr('name');
 				if ( fieldName )
 				{
-					var splitNameField = fieldName.split('[');
-					if (splitNameField.length == 2) //Regular field
-					{
-						splitNameField = splitNameField[0];
-						var splitNameField2 = fieldName.split(']');
-						splitNameField2 = splitNameField2[1];
-						fieldName = splitNameField + '[' + groupNumber + ']' + splitNameField2;	
-					}
-					else if (splitNameField.length == 3) //Checkbox
-					{
-						splitNameField[1] = groupNumber + ']';
-						fieldName = splitNameField.join('[');
-					}
+					$(currentField).attr('name', fieldName.replace(/\[\d+\]/, '[' + groupNumber + ']'));
 				}
-				$(currentField).attr('name', fieldName);
 			});
 		}
 
@@ -348,22 +335,8 @@
 				var fieldName = $(currentField).attr('name');
 				if ( fieldName )
 				{
-					var splitNameField = fieldName.split('[');
-					if (splitNameField.length == 2) //Regular field
-					{
-						splitNameField = splitNameField[0];
-						var splitNameField2 = fieldName.split(']');
-						splitNameField2 = splitNameField2[1];
-						fieldName = splitNameField + '[' + newPosition + ']' + splitNameField2;	
-					}
-					else if (splitNameField.length == 3) //Checkbox
-					{
-						splitNameField[1] = newPosition + ']';
-						fieldName = splitNameField.join('[');
-					}
-					
+					$(currentField).attr('name', fieldName.replace(/\[\d+\]/, '[' + newPosition + ']'));
 				}
-				$(currentField).attr('name', fieldName);
 			});
 		}
 
@@ -405,24 +378,9 @@
 			$(fieldTypesToChange[i], theClone).each(function(){
 				var currentField = $(this);
 				var fieldName = $(currentField).attr('name');
-				if ( fieldName )
-				{
-					var splitNameField = fieldName.split('[');
-					if (splitNameField.length == 2) //Regular field
-					{
-						splitNameField = splitNameField[0];
-						var splitNameField2 = fieldName.split(']');
-						splitNameField2 = splitNameField2[1];
-						fieldName = splitNameField + '[' + groupNumber + ']' + splitNameField2;	
-					}
-					else if (splitNameField.length == 3) //Checkbox
-					{
-						splitNameField[1] = groupNumber + ']';
-						fieldName = splitNameField.join('[');
-					}
-					
+				if ( fieldName ){
+					$(currentField).attr('name', fieldName.replace(/\[\d+\]/, '[' + groupNumber + ']'));
 				}
-				$(currentField).attr('name', fieldName);
 			});
 		}
 
@@ -564,28 +522,8 @@
 		$('input', imageField).attr('value','');
 	});
 
-	 /*####################################*/
-	 /*######  Actions on Page Save ######*/
-	 /*####################################*/
-
+	// Validate the SMB fields when the page is saved.
 	$('#publish').click(function(){
-		//Add index counters to groups.
-		$('.smb_repeat_group').each(function(){
-			var group = this;
-			var groupItems = 0;
-			var groupName = $(this).data('group-name')
-			var groupIndexId = groupName + '_index';
-			$('tr', group).each(function(){
-				if ( $(this).hasClass('smb_repeat_group_item') ) groupItems++;
-			});
-
-			if ( $('#'+groupIndexId).length == 1 ) $('#'+groupIndexId).val(groupItems);
-			else $(group).before('<input type="hidden" id="' + groupIndexId + '" class="groupIndexId" name="' + groupName + '" value="' + groupItems + '">');
-
-			console.log(groupItems);
-		});
-
-		//Validate the SMB fields
 	 	return SMBFieldValidator.init();
 	});
 
